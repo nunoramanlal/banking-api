@@ -1,0 +1,23 @@
+# Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+
+# Build directories (Gradle or other)
+build/
+
+# IDEs
+.idea
+*.iml
+*.iws
+*.ipr
+.vscode/
+.classpath
+.project
+.settings
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests / logs
+*.log
