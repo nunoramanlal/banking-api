@@ -1,3 +1,16 @@
 spring:
   application:
     name: banking-api
+  datasource:
+    driverClassName: org.h2.Driver
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  h2:
+    console:
+      enabled: true
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
