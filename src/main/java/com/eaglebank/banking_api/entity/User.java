@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Getter
 @Setter
@@ -16,7 +18,6 @@ import org.hibernate.annotations.UuidGenerator;
 public class User {
 
     @Id
-    @GeneratedValue
     @UuidGenerator
     @Column(updatable = false, nullable = false)
     private UUID id;
@@ -24,36 +25,55 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    @Embedded
-    private Address address;
+    @Column(nullable = false)
+    private String email;
 
     @Column(nullable = false)
     private String phoneNumber;
 
     @Column(nullable = false)
-    private String email;
+    private String line1;
 
+    private String line2;
+
+    private String line3;
+
+    @Column(nullable = false)
+    private String town;
+
+    @Column(nullable = false)
+    private String county;
+
+    @Column(nullable = false)
+    private String postcode;
+
+    @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdTimestamp;
 
+    @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime updatedTimestamp;
 
-    public User(String name, Address address, String phoneNumber, String email) {
+    public User(
+            String name,
+            String email,
+            String phoneNumber,
+            String line1,
+            String line2,
+            String line3,
+            String town,
+            String county,
+            String postcode
+    ) {
         this.name = name;
-        this.address = address;
-        this.phoneNumber = phoneNumber;
         this.email = email;
-    }
-
-    @PrePersist
-    public void onCreate() {
-        this.createdTimestamp = LocalDateTime.now();
-        this.updatedTimestamp = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void onUpdate() {
-        this.updatedTimestamp = LocalDateTime.now();
+        this.phoneNumber = phoneNumber;
+        this.line1 = line1;
+        this.line2 = line2;
+        this.line3 = line3;
+        this.town = town;
+        this.county = county;
+        this.postcode = postcode;
     }
 }

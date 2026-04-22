@@ -1,6 +1,5 @@
 package com.eaglebank.banking_api.service;
 
-import com.eaglebank.banking_api.entity.Address;
 import com.eaglebank.banking_api.entity.User;
 import com.eaglebank.banking_api.repository.UserRepository;
 import com.eaglebank.banking_api.service.command.CreateUserCommand;
@@ -17,15 +16,20 @@ public class UserService {
 
     @Transactional
     public User createUser(CreateUserCommand command) {
-        Address address = new Address(
-                command.address().line1(),
-                command.address().line2(),
-                command.address().line3(),
-                command.address().town(),
-                command.address().county(),
-                command.address().postcode());
+        return userRepository.save(buildUser(command));
+    }
 
-        User user = new User(command.name(), address, command.phoneNumber(), command.email());
-        return userRepository.save(user);
+    private User buildUser(CreateUserCommand command){
+        return new User(
+                command.name(),
+                command.email(),
+                command.phoneNumber(),
+                command.line1(),
+                command.line2(),
+                command.line3(),
+                command.town(),
+                command.county(),
+                command.postcode()
+        );
     }
 }

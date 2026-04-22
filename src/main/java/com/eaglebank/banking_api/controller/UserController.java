@@ -64,6 +64,7 @@ public class UserController {
         CreateUserCommand command = userMapper.toCommand(request);
         User newUser = userService.createUser(command);
         UserResponse userResponse = userMapper.toResponse(newUser);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
     }
 }
