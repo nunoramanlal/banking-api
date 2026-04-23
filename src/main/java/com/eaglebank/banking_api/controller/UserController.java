@@ -17,11 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/v1/users")
@@ -38,6 +34,7 @@ public class UserController {
         this.userResponseMapper = userResponseMapper;
     }
 
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     @Operation(summary = "Create a new user", description = "Create a new user with the provided details")
     @ApiResponses(
@@ -64,11 +61,10 @@ public class UserController {
                                         mediaType = "application/json",
                                         schema = @Schema(implementation = ErrorResponse.class)))
             })
-    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+    public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
         CreateUserCommand command = userRequestMapper.toCommand(request);
         User newUser = userService.createUser(command);
-        UserResponse userResponse = userResponseMapper.toResponse(newUser);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
+        return userResponseMapper.toResponse(newUser);
     }
 }

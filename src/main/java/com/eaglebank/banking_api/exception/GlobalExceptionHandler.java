@@ -46,6 +46,20 @@ public class GlobalExceptionHandler {
         return new ErrorResponse("A database error occurred");
     }
 
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ErrorResponse handleInvalidCredentials(InvalidCredentialsException ex) {
+        log.debug("Invalid credentials: {}", ex.getMessage());
+        return new ErrorResponse(ex.getMessage());
+    }
+
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ExceptionHandler(InvalidTokenException.class)
+    public ErrorResponse handleInvalidToken(InvalidTokenException ex) {
+        log.debug("Invalid token: {}", ex.getMessage());
+        return new ErrorResponse(ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleGeneralException(Exception ex) {
