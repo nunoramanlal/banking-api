@@ -6,7 +6,6 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -63,8 +62,7 @@ public class User {
             String line3,
             String town,
             String county,
-            String postcode
-    ) {
+            String postcode) {
         this.name = name;
         this.email = email;
         this.phoneNumber = phoneNumber;

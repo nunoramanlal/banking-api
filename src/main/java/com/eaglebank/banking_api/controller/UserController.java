@@ -5,7 +5,8 @@ import com.eaglebank.banking_api.dto.response.BadRequestErrorResponse;
 import com.eaglebank.banking_api.dto.response.ErrorResponse;
 import com.eaglebank.banking_api.dto.response.UserResponse;
 import com.eaglebank.banking_api.entity.User;
-import com.eaglebank.banking_api.mapper.UserMapper;
+import com.eaglebank.banking_api.mapper.user.UserRequestMapper;
+import com.eaglebank.banking_api.mapper.user.UserResponseMapper;
 import com.eaglebank.banking_api.service.UserService;
 import com.eaglebank.banking_api.service.command.CreateUserCommand;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,11 +28,14 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "user", description = "Manage a user")
 public class UserController {
     private final UserService userService;
-    private final UserMapper userMapper;
+    private final UserRequestMapper userRequestMapper;
+    private final UserResponseMapper userResponseMapper;
 
-    public UserController(UserService userService, UserMapper userMapper) {
+    public UserController(
+            UserService userService, UserRequestMapper userRequestMapper, UserResponseMapper userResponseMapper) {
         this.userService = userService;
-        this.userMapper = userMapper;
+        this.userRequestMapper = userRequestMapper;
+        this.userResponseMapper = userResponseMapper;
     }
 
     @PostMapping
@@ -61,9 +65,9 @@ public class UserController {
                                         schema = @Schema(implementation = ErrorResponse.class)))
             })
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
-        CreateUserCommand command = userMapper.toCommand(request);
+        CreateUserCommand command = userRequestMapper.toCommand(request);
         User newUser = userService.createUser(command);
-        UserResponse userResponse = userMapper.toResponse(newUser);
+        UserResponse userResponse = userResponseMapper.toResponse(newUser);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
     }

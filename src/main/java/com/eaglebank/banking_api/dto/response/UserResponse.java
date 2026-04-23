@@ -2,7 +2,6 @@ package com.eaglebank.banking_api.dto.response;
 
 import com.eaglebank.banking_api.dto.AddressDto;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
 
 @Schema(name = "UserResponse", description = "Response payload for user data")
 public record UserResponse(

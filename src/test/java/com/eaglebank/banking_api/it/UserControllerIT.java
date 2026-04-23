@@ -123,10 +123,8 @@ class UserControllerIT {
         @ParameterizedTest(name = "{0}")
         @MethodSource("invalidRequests")
         void shouldReturnBadRequestForInvalidInputs(
-                String description,
-                CreateUserRequest request,
-                String expectedField,
-                ValidationErrorType expectedType) throws Exception {
+                String description, CreateUserRequest request, String expectedField, ValidationErrorType expectedType)
+                throws Exception {
             mockMvc.perform(post("/v1/users")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
