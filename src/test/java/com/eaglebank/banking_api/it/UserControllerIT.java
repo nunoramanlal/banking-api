@@ -120,6 +120,28 @@ class UserControllerIT {
                     .andExpect(jsonPath("$.details").isArray());
         }
 
+        @Test
+        void shouldReturnInternalServerErrorWhenCreatingUserWithDuplicateEmail() throws Exception {
+            CreateUserRequest firstRequest =
+                    new CreateUserRequest("test-name", validAddress(), "+447911123456", "duplicate@example.com");
+
+            mockMvc.perform(post("/v1/users")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(firstRequest)))
+                    .andExpect(status().isCreated());
+
+            CreateUserRequest duplicateRequest =
+                    new CreateUserRequest("different-name", validAddress(), "+447911999999", "duplicate@example.com");
+
+            mockMvc.perform(post("/v1/users")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(duplicateRequest)))
+                    .andExpect(status().is5xxServerError())
+                    .andExpect(jsonPath("$.message").exists());
+
+            assertThat(userRepository.findAll()).hasSize(1);
+        }
+
         @ParameterizedTest(name = "{0}")
         @MethodSource("invalidRequests")
         void shouldReturnBadRequestForInvalidInputs(

@@ -3,7 +3,7 @@ spring:
     name: banking-api
   datasource:
     driverClassName: org.h2.Driver
-    url: ${SPRING_DATASOURCE_URL}
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:bankingdb}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
   h2:
@@ -23,3 +23,10 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:change-me-in-production-must-be-at-least-32-characters-long}
+    access-token-expiry: PT15M
+    refresh-token-expiry: P7D
+    cleanup-cron: "0 0 * * * *"   # every hour
