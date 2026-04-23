@@ -1,12 +1,15 @@
 package com.eaglebank.banking_api.it;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.eaglebank.banking_api.dto.AddressDto;
 import com.eaglebank.banking_api.dto.request.CreateUserRequest;
+import com.eaglebank.banking_api.dto.request.LoginRequest;
 import com.eaglebank.banking_api.dto.response.ValidationErrorType;
+import com.eaglebank.banking_api.repository.RefreshTokenRepository;
 import com.eaglebank.banking_api.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Stream;
@@ -22,6 +25,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,10 +38,14 @@ class UserControllerIT {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @AfterEach
     void cleanUp() {
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -223,5 +231,106 @@ class UserControllerIT {
         private static AddressDto validAddress() {
             return new AddressDto("test-line1", "test-line2", "test-line3", "test-town", "test-county", "TEST 123");
         }
+    }
+
+    @Nested
+    class FetchUser {
+
+        @Test
+        void shouldFetchUserWhenAuthenticatedAsSameUser() throws Exception {
+            String userId = createUserAndGetId("test@example.com");
+            String accessToken = loginAndGetAccessToken("test@example.com");
+
+            mockMvc.perform(get("/v1/users/" + userId).header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(userId))
+                    .andExpect(jsonPath("$.name").value("test-name"))
+                    .andExpect(jsonPath("$.email").value("test@example.com"))
+                    .andExpect(jsonPath("$.phoneNumber").value("+447911123456"))
+                    .andExpect(jsonPath("$.address.line1").value("test-line1"))
+                    .andExpect(jsonPath("$.address.line2").isEmpty())
+                    .andExpect(jsonPath("$.address.line3").isEmpty())
+                    .andExpect(jsonPath("$.address.town").value("test-town"))
+                    .andExpect(jsonPath("$.address.county").value("test-county"))
+                    .andExpect(jsonPath("$.address.postcode").value("TEST 123"))
+                    .andExpect(jsonPath("$.createdTimestamp").exists())
+                    .andExpect(jsonPath("$.updatedTimestamp").exists());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenUserIdFormatIsInvalid() throws Exception {
+            createUserAndGetId("test@example.com");
+            String accessToken = loginAndGetAccessToken("test@example.com");
+
+            mockMvc.perform(get("/v1/users/invalid-id-format").header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Invalid details supplied"))
+                    .andExpect(jsonPath("$.details").isArray())
+                    .andExpect(jsonPath("$.details[0].field").value("userId"))
+                    .andExpect(jsonPath("$.details[0].message").value("User ID format is invalid"))
+                    .andExpect(jsonPath("$.details[0].type").value(ValidationErrorType.INVALID_FORMAT.name()));
+        }
+        @Test
+        void shouldReturnForbiddenWhenFetchingDifferentUser() throws Exception {
+            createUserAndGetId("user1@example.com");
+            String otherUserId = createUserAndGetId("user2@example.com");
+            String accessToken = loginAndGetAccessToken("user1@example.com");
+
+            mockMvc.perform(get("/v1/users/" + otherUserId).header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message").exists());
+        }
+
+        @Test
+        void shouldReturnForbiddenWhenFetchingNonExistentUser() throws Exception {
+            createUserAndGetId("test@example.com");
+            String accessToken = loginAndGetAccessToken("test@example.com");
+
+            mockMvc.perform(get("/v1/users/usr-nonexistent").header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void shouldReturnUnauthorizedWhenNoToken() throws Exception {
+            mockMvc.perform(get("/v1/users/usr-anything")).andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void shouldReturnUnauthorizedWhenInvalidToken() throws Exception {
+            mockMvc.perform(get("/v1/users/usr-anything").header("Authorization", "Bearer invalid-token"))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    private String createUserAndGetId(String email) throws Exception {
+        CreateUserRequest request = new CreateUserRequest(
+                "test-name",
+                new AddressDto("test-line1", null, null, "test-town", "test-county", "TEST 123"),
+                "+447911123456",
+                email);
+
+        MvcResult result = mockMvc.perform(post("/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return objectMapper
+                .readTree(result.getResponse().getContentAsString())
+                .get("id")
+                .asText();
+    }
+
+    private String loginAndGetAccessToken(String email) throws Exception {
+        MvcResult result = mockMvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest(email))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return objectMapper
+                .readTree(result.getResponse().getContentAsString())
+                .get("accessToken")
+                .asText();
     }
 }

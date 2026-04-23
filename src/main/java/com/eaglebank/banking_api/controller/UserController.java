@@ -16,11 +16,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/v1/users")
+@Validated
 @Tag(name = "user", description = "Manage a user")
 public class UserController {
     private final UserService userService;
@@ -66,5 +70,50 @@ public class UserController {
         User newUser = userService.createUser(command);
 
         return userResponseMapper.toResponse(newUser);
+    }
+
+    @ResponseStatus(HttpStatus.OK)
+    @GetMapping("/{userId}")
+    @Operation(summary = "Fetch user by ID", description = "Fetch the details of a user")
+    @ApiResponses(
+            value = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "The user details",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = UserResponse.class))),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Access token is missing or invalid",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "The user is not allowed to access this user",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User was not found",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "An unexpected error occurred",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class)))
+            })
+    public UserResponse fetchUserById(
+            @PathVariable
+            @Pattern(regexp = "^usr-[A-Za-z0-9]+$", message = "User ID format is invalid")
+            String userId,
+            @AuthenticationPrincipal String authenticatedUserId) {
+        User user = userService.fetchUserById(userId, authenticatedUserId);
+        return userResponseMapper.toResponse(user);
     }
 }
