@@ -98,7 +98,7 @@ class UserMapperTest {
     private User buildUser() {
         User user = new User();
 
-        user.setId(UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        user.setId("usr-00000000000000000000000000000001");
         user.setName("test-name");
         user.setEmail("test@example.com");
         user.setPhoneNumber("+10000000000");

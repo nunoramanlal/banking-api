@@ -29,7 +29,7 @@ public class UserMapper {
 
     public UserResponse toResponse(User user) {
         return new UserResponse(
-                user.getId().toString(),
+                user.getId(),
                 user.getName(),
                 new AddressDto(
                         user.getLine1(),

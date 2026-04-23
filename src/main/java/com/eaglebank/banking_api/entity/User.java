@@ -18,14 +18,13 @@ import org.hibernate.annotations.UpdateTimestamp;
 public class User {
 
     @Id
-    @UuidGenerator
     @Column(updatable = false, nullable = false)
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String email;
 
     @Column(nullable = false)
@@ -75,5 +74,12 @@ public class User {
         this.town = town;
         this.county = county;
         this.postcode = postcode;
+    }
+
+    @PrePersist
+    public void generateId() {
+        if (this.id == null) {
+            this.id = "usr-" + UUID.randomUUID().toString().replace("-", "");
+        }
     }
 }
