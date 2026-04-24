@@ -10,50 +10,59 @@ This service exposes endpoints for CRUD operations, with stateless JWT authentic
 
 - **Java 21** with **Spring Boot 4.0.5**
 - **Spring Security** for JWT authentication
-- **Spring Data JPA** with **H2**
+- **Spring Data JPA** with **PostgreSQL**
+- **Flyway** for database migrations
 - **jjwt** for JWT generation and parsing
 - **Lombok** for boilerplate reduction
 - **JUnit 5** with **Mockito** and **AssertJ** for testing
 - **Springdoc OpenAPI** for API documentation
 - **Spotless** with **Palantir Java Format** for code formatting
+- **Docker**
 
 ## Prerequisites
 
 - Java 21
 - Maven (or use the included `./mvnw` wrapper)
+- Docker
 
 ## Quick start
 
+### Development workflow
+
 ```bash
-# Run the application
+# 1. Start PostgreSQL in Docker
+./src/test/resources/docker/dockerStart.sh
+
+# 2. Run the application
 ./mvnw spring-boot:run
 
-# Run all tests
-./mvnw verify
-
-# Format code
-./mvnw spotless:apply
+# 3. When done, tear down
+./src/test/resources/docker/dockerShutdown.sh
 ```
 
 The API will be available at `http://localhost:8080`.
 
-### Environment variables
-
-| Variable | Description | Default |
-|---|---|---|
-| `SPRING_DATASOURCE_URL` | Database URL | (required) |
-| `SPRING_DATASOURCE_USERNAME` | Database username | (required) |
-| `SPRING_DATASOURCE_PASSWORD` | Database password | (required) |
-| `JWT_SECRET` | JWT signing secret (32+ chars) | falls back to a dev secret |
-
-Quick local setup:
+### Running tests
 
 ```bash
-export SPRING_DATASOURCE_URL=jdbc:h2:mem:bankingdb
-export SPRING_DATASOURCE_USERNAME=sa
-export SPRING_DATASOURCE_PASSWORD=password
-./mvnw spring-boot:run
+# Start PostgreSQL
+./src/test/resources/docker/dockerStart.sh
+
+# Run all tests (unit + integration)
+./mvnw verify
+
+# Tear down
+./src/test/resources/docker/dockerShutdown.sh
 ```
+
+## Configuration
+
+### Database
+
+The application uses PostgreSQL with Flyway migrations. On startup, Flyway automatically applies all pending migrations from `src/main/resources/db/migration/`:
+
+- `V1__create_users_table.sql` — creates the `users` table with address fields and audit columns
+- `V2__create_refresh_tokens_table.sql` — creates the `refresh_tokens` table with foreign key to users
 
 ## Example usage
 
@@ -171,8 +180,35 @@ Get new { accessToken, refreshToken } (refresh token rotated)
 
 **Integration tests** (`*IT.java`) 
 ```bash
-./mvnw verify  # runs both unit tests (Surefire) and IT tests (Failsafe)
+# Run only unit tests (fast, no Docker needed)
+./mvnw test
+
+# Run all tests (unit + integration)
+./src/test/resources/docker/dockerStart.sh
+./mvnw verify
+./src/test/resources/docker/dockerShutdown.sh
 ```
+
+## Docker
+
+### Helper scripts
+
+Located in `src/test/resources/docker/`:
+
+- **`dockerStart.sh`** — starts PostgreSQL, waits for healthy, cleans up any orphaned containers
+- **`dockerShutdown.sh`** — stops all services and removes volumes (clean slate)
+
+## Code formatting
+
+```bash
+# Check formatting
+./mvnw spotless:check
+
+# Auto-format all code
+./mvnw spotless:apply
+```
+
+The project uses **Palantir Java Format** enforced via Spotless. Formatting runs automatically during the build (`process-sources` phase).
 
 ## CI/CD
 
