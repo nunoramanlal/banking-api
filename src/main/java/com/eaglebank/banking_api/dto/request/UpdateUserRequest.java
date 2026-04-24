@@ -11,8 +11,7 @@ public record UpdateUserRequest(
         @Schema(description = "Name of the user", example = "Test user")
         String name,
 
-        @Schema(description = "User's address details")
-        @Valid
+        @Schema(description = "User's address details") @Valid
         AddressDto address,
 
         @Schema(description = "User phone number", example = "+123456789123")

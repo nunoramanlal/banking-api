@@ -509,10 +509,6 @@ class UserControllerIT {
         }
     }
 
-    // Add this Nested class inside UserControllerIT.java
-// It uses the existing helper methods (createUserAndGetId, loginAndGetAccessToken)
-// and the existing constants from the test class.
-
     @Nested
     class DeleteUser {
 
@@ -588,8 +584,8 @@ class UserControllerIT {
             createUserAndGetId(TEST_EMAIL);
             String accessToken = loginAndGetAccessToken(TEST_EMAIL);
 
-            mockMvc.perform(
-                            delete(USERS_ENDPOINT + "invalid-id-format").header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(delete(USERS_ENDPOINT + "invalid-id-format")
+                            .header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.message").value("Invalid details supplied"))
                     .andExpect(jsonPath("$.details").isArray())

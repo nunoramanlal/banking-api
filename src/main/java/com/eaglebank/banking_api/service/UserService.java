@@ -20,7 +20,8 @@ public class UserService {
     private final UserEntityMapper userEntityMapper;
     private final AccountRepository accountRepository;
 
-    public UserService(UserRepository userRepository, UserEntityMapper userEntityMapper, AccountRepository accountRepository) {
+    public UserService(
+            UserRepository userRepository, UserEntityMapper userEntityMapper, AccountRepository accountRepository) {
         this.userRepository = userRepository;
         this.userEntityMapper = userEntityMapper;
         this.accountRepository = accountRepository;
@@ -59,8 +60,7 @@ public class UserService {
     public void deleteUser(String userId) {
         log.info("Deleting user: {}", userId);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User was not found"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User was not found"));
 
         if (accountRepository.existsByUserId(userId)) {
             throw new ConflictException("A user cannot be deleted when they are associated with a bank account");
@@ -69,5 +69,4 @@ public class UserService {
         userRepository.delete(user);
         log.info("User deleted successfully: {}", userId);
     }
-
 }

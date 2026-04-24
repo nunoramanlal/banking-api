@@ -12,6 +12,7 @@ public record CreateBankAccountRequest(
                 requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "Name is required")
         String name,
+
         @Schema(
                 description = "Type of the account",
                 example = "personal",

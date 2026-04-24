@@ -99,6 +99,12 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(ex.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleForbidden(ForbiddenException ex) {
+        log.warn("Forbidden: {}", ex.getMessage());
+        return new ErrorResponse(ex.getMessage());
+    }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)

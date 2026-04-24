@@ -2,10 +2,12 @@ package com.eaglebank.banking_api.service;
 
 import com.eaglebank.banking_api.entity.Account;
 import com.eaglebank.banking_api.entity.User;
+import com.eaglebank.banking_api.exception.ForbiddenException;
 import com.eaglebank.banking_api.exception.NotFoundException;
 import com.eaglebank.banking_api.repository.AccountRepository;
 import com.eaglebank.banking_api.repository.UserRepository;
 import com.eaglebank.banking_api.service.command.CreateAccountCommand;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -34,5 +36,26 @@ public class AccountService {
 
         log.info("Bank account created successfully with account number: {}", savedAccount.getAccountNumber());
         return savedAccount;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Account> listAccounts(String userId) {
+        log.info("Listing bank accounts for user: {}", userId);
+        return accountRepository.findByUserId(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public Account fetchAccountByAccountNumber(String userId, Long accountNumber) {
+        log.info("Fetching bank account: {} for user: {}", accountNumber, userId);
+
+        Account account = accountRepository
+                .findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new NotFoundException("Bank account was not found"));
+
+        if (!account.getUser().getId().equals(userId)) {
+            throw new ForbiddenException("You are not allowed to access this bank account");
+        }
+
+        return account;
     }
 }
