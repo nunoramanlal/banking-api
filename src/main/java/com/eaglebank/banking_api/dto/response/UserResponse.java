@@ -5,13 +5,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(name = "UserResponse", description = "Response payload for user data")
 public record UserResponse(
-        @Schema(description = "Unique identifier of the user", example = "123e4567-e89b-12d3-a456-426614174000")
+        @Schema(description = "Unique identifier of the user", example = "usr-abc123")
         String id,
 
         @Schema(description = "Name of the user", example = "Test user")
         String name,
 
-        @Schema(description = "User's address details", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+        @Schema(description = "User's address details", requiredMode = Schema.RequiredMode.REQUIRED)
         AddressDto address,
 
         @Schema(description = "User phone number", example = "+123456789123")

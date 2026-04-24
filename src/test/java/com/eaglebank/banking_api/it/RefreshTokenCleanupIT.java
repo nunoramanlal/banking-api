@@ -3,10 +3,13 @@ package com.eaglebank.banking_api.it;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.eaglebank.banking_api.entity.RefreshToken;
+import com.eaglebank.banking_api.entity.User;
 import com.eaglebank.banking_api.repository.RefreshTokenRepository;
+import com.eaglebank.banking_api.repository.UserRepository;
 import com.eaglebank.banking_api.scheduler.RefreshTokenCleanup;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,16 +25,36 @@ class RefreshTokenCleanupIT {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        testUser = new User(
+                "test-name",
+                "test@example.com",
+                "+447911123456",
+                "test-line1",
+                null,
+                null,
+                "test-town",
+                "test-county",
+                "TEST 123");
+        userRepository.save(testUser);
+    }
+
     @AfterEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
     void shouldDeleteExpiredTokens() {
-        RefreshToken expired =
-                new RefreshToken("expired-token", "usr-1", LocalDateTime.now().minusHours(1));
-        refreshTokenRepository.save(expired);
+        refreshTokenRepository.save(
+                new RefreshToken("expired-token", testUser, LocalDateTime.now().minusHours(1)));
 
         cleanupTask.cleanupExpiredTokens();
 
@@ -41,7 +64,7 @@ class RefreshTokenCleanupIT {
     @Test
     void shouldDeleteRevokedTokens() {
         RefreshToken revoked =
-                new RefreshToken("revoked-token", "usr-1", LocalDateTime.now().plusDays(7));
+                new RefreshToken("revoked-token", testUser, LocalDateTime.now().plusDays(7));
         revoked.setRevoked(true);
         refreshTokenRepository.save(revoked);
 
@@ -52,9 +75,8 @@ class RefreshTokenCleanupIT {
 
     @Test
     void shouldKeepValidTokens() {
-        RefreshToken valid =
-                new RefreshToken("valid-token", "usr-1", LocalDateTime.now().plusDays(7));
-        refreshTokenRepository.save(valid);
+        refreshTokenRepository.save(
+                new RefreshToken("valid-token", testUser, LocalDateTime.now().plusDays(7)));
 
         cleanupTask.cleanupExpiredTokens();
 
@@ -64,17 +86,15 @@ class RefreshTokenCleanupIT {
 
     @Test
     void shouldOnlyDeleteExpiredOrRevokedTokensMixed() {
-        RefreshToken expired =
-                new RefreshToken("expired-token", "usr-1", LocalDateTime.now().minusHours(1));
         RefreshToken revoked =
-                new RefreshToken("revoked-token", "usr-1", LocalDateTime.now().plusDays(7));
+                new RefreshToken("revoked-token", testUser, LocalDateTime.now().plusDays(7));
         revoked.setRevoked(true);
-        RefreshToken valid =
-                new RefreshToken("valid-token", "usr-1", LocalDateTime.now().plusDays(7));
 
-        refreshTokenRepository.save(expired);
+        refreshTokenRepository.save(
+                new RefreshToken("expired-token", testUser, LocalDateTime.now().minusHours(1)));
         refreshTokenRepository.save(revoked);
-        refreshTokenRepository.save(valid);
+        refreshTokenRepository.save(
+                new RefreshToken("valid-token", testUser, LocalDateTime.now().plusDays(7)));
 
         cleanupTask.cleanupExpiredTokens();
 

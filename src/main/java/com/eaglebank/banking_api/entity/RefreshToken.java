@@ -17,8 +17,9 @@ public class RefreshToken {
     @Column(updatable = false, nullable = false)
     private String token;
 
-    @Column(nullable = false)
-    private String userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(nullable = false)
     private LocalDateTime expiresAt;
@@ -26,9 +27,9 @@ public class RefreshToken {
     @Column(nullable = false)
     private boolean revoked;
 
-    public RefreshToken(String token, String userId, LocalDateTime expiresAt) {
+    public RefreshToken(String token, User user, LocalDateTime expiresAt) {
         this.token = token;
-        this.userId = userId;
+        this.user = user;
         this.expiresAt = expiresAt;
         this.revoked = false;
     }

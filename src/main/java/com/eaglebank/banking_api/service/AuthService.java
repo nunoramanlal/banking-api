@@ -63,9 +63,7 @@ public class AuthService {
             throw new InvalidTokenException("Refresh token is expired or revoked");
         }
 
-        User user = userRepository
-                .findById(refreshToken.getUserId())
-                .orElseThrow(() -> new InvalidTokenException("User not found"));
+        User user = refreshToken.getUser();
 
         refreshToken.setRevoked(true);
         refreshTokenRepository.save(refreshToken);
@@ -77,8 +75,8 @@ public class AuthService {
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail());
         String refreshTokenValue = UUID.randomUUID().toString();
 
-        RefreshToken refreshToken = new RefreshToken(
-                refreshTokenValue, user.getId(), LocalDateTime.now().plus(refreshTokenExpiry));
+        RefreshToken refreshToken =
+                new RefreshToken(refreshTokenValue, user, LocalDateTime.now().plus(refreshTokenExpiry));
         refreshTokenRepository.save(refreshToken);
 
         return new AuthResult(accessToken, refreshTokenValue, jwtService.getAccessTokenExpirySeconds());

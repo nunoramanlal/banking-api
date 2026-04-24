@@ -15,6 +15,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * Spring Security filter that processes incoming requests
+ * and extracts JWT tokens from the Authorization header.
+ *
+ * If the token is valid, it sets authentication in the SecurityContext.
+ */
 @Slf4j
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -27,6 +33,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
     }
 
+    /**
+     * Filter logic executed once per request
+     */
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -49,6 +58,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userId, null, List.of());
+            // Set the authentication in the SecurityContext so that downstream classes can access it
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (JwtException ex) {
             log.debug("Invalid JWT: {}", ex.getMessage());

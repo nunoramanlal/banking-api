@@ -78,7 +78,7 @@ class AuthServiceTest {
             verify(refreshTokenRepository).save(tokenCaptor.capture());
 
             RefreshToken saved = tokenCaptor.getValue();
-            assertThat(saved.getUserId()).isEqualTo(USER_ID);
+            assertThat(saved.getUser()).isEqualTo(user);
             assertThat(saved.getToken()).isNotBlank();
             assertThat(saved.isRevoked()).isFalse();
             assertThat(saved.getExpiresAt()).isAfter(LocalDateTime.now().plusDays(6));
@@ -115,9 +115,8 @@ class AuthServiceTest {
         @Test
         void shouldIssueNewTokensWhenRefreshTokenIsValid() {
             User user = buildUser();
-            RefreshToken validToken = buildValidRefreshToken();
+            RefreshToken validToken = buildValidRefreshToken(user);
             when(refreshTokenRepository.findByToken("valid-token")).thenReturn(Optional.of(validToken));
-            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
             when(jwtService.generateAccessToken(USER_ID, EMAIL)).thenReturn(ACCESS_TOKEN);
             when(jwtService.getAccessTokenExpirySeconds()).thenReturn(900L);
 
@@ -130,9 +129,8 @@ class AuthServiceTest {
         @Test
         void shouldRevokeOldRefreshTokenOnRotation() {
             User user = buildUser();
-            RefreshToken validToken = buildValidRefreshToken();
+            RefreshToken validToken = buildValidRefreshToken(user);
             when(refreshTokenRepository.findByToken("valid-token")).thenReturn(Optional.of(validToken));
-            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
             when(jwtService.generateAccessToken(anyString(), anyString())).thenReturn(ACCESS_TOKEN);
 
             authService.refresh("valid-token");
@@ -152,7 +150,8 @@ class AuthServiceTest {
 
         @Test
         void shouldThrowInvalidTokenWhenTokenIsRevoked() {
-            RefreshToken revokedToken = buildValidRefreshToken();
+            User user = buildUser();
+            RefreshToken revokedToken = buildValidRefreshToken(user);
             revokedToken.setRevoked(true);
             when(refreshTokenRepository.findByToken("revoked")).thenReturn(Optional.of(revokedToken));
 
@@ -165,8 +164,9 @@ class AuthServiceTest {
 
         @Test
         void shouldThrowInvalidTokenWhenTokenIsExpired() {
+            User user = buildUser();
             RefreshToken expiredToken =
-                    new RefreshToken("expired", USER_ID, LocalDateTime.now().minusHours(1));
+                    new RefreshToken("expired", user, LocalDateTime.now().minusHours(1));
             when(refreshTokenRepository.findByToken("expired")).thenReturn(Optional.of(expiredToken));
 
             assertThatThrownBy(() -> authService.refresh("expired"))
@@ -174,17 +174,6 @@ class AuthServiceTest {
                     .hasMessageContaining("expired or revoked");
 
             verify(jwtService, never()).generateAccessToken(anyString(), anyString());
-        }
-
-        @Test
-        void shouldThrowInvalidTokenWhenUserNotFound() {
-            RefreshToken validToken = buildValidRefreshToken();
-            when(refreshTokenRepository.findByToken("valid-token")).thenReturn(Optional.of(validToken));
-            when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> authService.refresh("valid-token"))
-                    .isInstanceOf(InvalidTokenException.class)
-                    .hasMessageContaining("User not found");
         }
     }
 
@@ -203,7 +192,7 @@ class AuthServiceTest {
         return user;
     }
 
-    private RefreshToken buildValidRefreshToken() {
-        return new RefreshToken("valid-token", USER_ID, LocalDateTime.now().plusDays(7));
+    private RefreshToken buildValidRefreshToken(User user) {
+        return new RefreshToken("valid-token", user, LocalDateTime.now().plusDays(7));
     }
 }

@@ -4,11 +4,13 @@ import com.eaglebank.banking_api.dto.response.BadRequestErrorResponse;
 import com.eaglebank.banking_api.dto.response.ErrorResponse;
 import com.eaglebank.banking_api.dto.response.ValidationError;
 import com.eaglebank.banking_api.dto.response.ValidationErrorType;
+import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -28,6 +30,22 @@ public class GlobalExceptionHandler {
                         error.getRejectedValue() == null
                                 ? ValidationErrorType.MISSING
                                 : ValidationErrorType.INVALID_FORMAT))
+                .toList();
+
+        return new BadRequestErrorResponse("Invalid details supplied", errors);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public BadRequestErrorResponse handleConstraintViolation(ConstraintViolationException ex) {
+        log.debug("Constraint violation: {}", ex.getMessage());
+
+        List<ValidationError> errors = ex.getConstraintViolations().stream()
+                .map(violation -> {
+                    String path = violation.getPropertyPath().toString();
+                    String field = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
+                    return new ValidationError(field, violation.getMessage(), ValidationErrorType.INVALID_FORMAT);
+                })
                 .toList();
 
         return new BadRequestErrorResponse("Invalid details supplied", errors);
@@ -58,6 +76,20 @@ public class GlobalExceptionHandler {
     public ErrorResponse handleInvalidToken(InvalidTokenException ex) {
         log.debug("Invalid token: {}", ex.getMessage());
         return new ErrorResponse(ex.getMessage());
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleNotFound(NotFoundException ex) {
+        log.debug("Not found: {}", ex.getMessage());
+        return new ErrorResponse(ex.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleAccessDenied(AccessDeniedException ex) {
+        log.debug("Access denied: {}", ex.getMessage());
+        return new ErrorResponse("You are not allowed to access this resource");
     }
 
     @ExceptionHandler(Exception.class)
