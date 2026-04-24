@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.eaglebank.banking_api.dto.AddressDto;
+import com.eaglebank.banking_api.dto.request.CreateBankAccountRequest;
 import com.eaglebank.banking_api.dto.request.CreateUserRequest;
 import com.eaglebank.banking_api.dto.request.LoginRequest;
 import com.eaglebank.banking_api.dto.request.UpdateUserRequest;
@@ -505,6 +506,96 @@ class UserControllerIT {
                                     null),
                             "address.town",
                             ValidationErrorType.MISSING));
+        }
+    }
+
+    // Add this Nested class inside UserControllerIT.java
+// It uses the existing helper methods (createUserAndGetId, loginAndGetAccessToken)
+// and the existing constants from the test class.
+
+    @Nested
+    class DeleteUser {
+
+        @Test
+        void shouldDeleteUserWhenAuthenticatedAndNoBankAccount() throws Exception {
+            String userId = createUserAndGetId(TEST_EMAIL);
+            String accessToken = loginAndGetAccessToken(TEST_EMAIL);
+
+            mockMvc.perform(delete(USERS_ENDPOINT + userId).header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isNoContent());
+
+            assertThat(userRepository.findById(userId)).isEmpty();
+        }
+
+        @Test
+        void shouldReturnConflictWhenUserHasBankAccount() throws Exception {
+            String userId = createUserAndGetId(TEST_EMAIL);
+            String accessToken = loginAndGetAccessToken(TEST_EMAIL);
+
+            // Create a bank account for this user
+            CreateBankAccountRequest accountRequest = new CreateBankAccountRequest("Personal Bank Account", "personal");
+            mockMvc.perform(post("/v1/accounts")
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(accountRequest)))
+                    .andExpect(status().isCreated());
+
+            mockMvc.perform(delete(USERS_ENDPOINT + userId).header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message")
+                            .value("A user cannot be deleted when they are associated with a bank account"));
+
+            // Verify user was NOT deleted
+            assertThat(userRepository.findById(userId)).isPresent();
+        }
+
+        @Test
+        void shouldReturnForbiddenWhenDeletingDifferentUser() throws Exception {
+            createUserAndGetId("user1@example.com");
+            String otherUserId = createUserAndGetId("user2@example.com");
+            String accessToken = loginAndGetAccessToken("user1@example.com");
+
+            mockMvc.perform(delete(USERS_ENDPOINT + otherUserId).header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message").exists());
+
+            // Verify the other user was NOT deleted
+            assertThat(userRepository.findById(otherUserId)).isPresent();
+        }
+
+        @Test
+        void shouldReturnForbiddenWhenDeletingNonExistentUser() throws Exception {
+            createUserAndGetId(TEST_EMAIL);
+            String accessToken = loginAndGetAccessToken(TEST_EMAIL);
+
+            mockMvc.perform(delete(USERS_ENDPOINT + "usr-nonexistent").header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void shouldReturnUnauthorizedWhenNoToken() throws Exception {
+            mockMvc.perform(delete(USERS_ENDPOINT + "usr-anything")).andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void shouldReturnUnauthorizedWhenInvalidToken() throws Exception {
+            mockMvc.perform(delete(USERS_ENDPOINT + "usr-anything").header("Authorization", "Bearer invalid-token"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenUserIdFormatIsInvalid() throws Exception {
+            createUserAndGetId(TEST_EMAIL);
+            String accessToken = loginAndGetAccessToken(TEST_EMAIL);
+
+            mockMvc.perform(
+                            delete(USERS_ENDPOINT + "invalid-id-format").header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Invalid details supplied"))
+                    .andExpect(jsonPath("$.details").isArray())
+                    .andExpect(jsonPath("$.details[0].field").value("userId"))
+                    .andExpect(jsonPath("$.details[0].message").value("User ID format is invalid"))
+                    .andExpect(jsonPath("$.details[0].type").value(ValidationErrorType.INVALID_FORMAT.name()));
         }
     }
 

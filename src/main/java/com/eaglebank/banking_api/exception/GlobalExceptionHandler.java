@@ -92,6 +92,14 @@ public class GlobalExceptionHandler {
         return new ErrorResponse("You are not allowed to access this resource");
     }
 
+    @ExceptionHandler(ConflictException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleConflict(ConflictException ex) {
+        log.warn("Conflict: {}", ex.getMessage());
+        return new ErrorResponse(ex.getMessage());
+    }
+
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleGeneralException(Exception ex) {
