@@ -1,6 +1,7 @@
 package com.eaglebank.banking_api.controller;
 
 import com.eaglebank.banking_api.dto.request.CreateUserRequest;
+import com.eaglebank.banking_api.dto.request.UpdateUserRequest;
 import com.eaglebank.banking_api.dto.response.BadRequestErrorResponse;
 import com.eaglebank.banking_api.dto.response.ErrorResponse;
 import com.eaglebank.banking_api.dto.response.UserResponse;
@@ -9,6 +10,7 @@ import com.eaglebank.banking_api.mapper.user.UserRequestMapper;
 import com.eaglebank.banking_api.mapper.user.UserResponseMapper;
 import com.eaglebank.banking_api.service.UserService;
 import com.eaglebank.banking_api.service.command.CreateUserCommand;
+import com.eaglebank.banking_api.service.command.UpdateUserCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -18,7 +20,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -77,43 +78,102 @@ public class UserController {
     @Operation(summary = "Fetch user by ID", description = "Fetch the details of a user")
     @ApiResponses(
             value = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "The user details",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = UserResponse.class))),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Access token is missing or invalid",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class))),
-                    @ApiResponse(
-                            responseCode = "403",
-                            description = "The user is not allowed to access this user",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class))),
-                    @ApiResponse(
-                            responseCode = "404",
-                            description = "User was not found",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class))),
-                    @ApiResponse(
-                            responseCode = "500",
-                            description = "An unexpected error occurred",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class)))
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "The user details",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = UserResponse.class))),
+                @ApiResponse(
+                        responseCode = "401",
+                        description = "Access token is missing or invalid",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "403",
+                        description = "The user is not allowed to access this user",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "404",
+                        description = "User was not found",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "500",
+                        description = "An unexpected error occurred",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class)))
             })
     public UserResponse fetchUserById(
-            @PathVariable
-            @Pattern(regexp = "^usr-[A-Za-z0-9]+$", message = "User ID format is invalid")
-            String userId,
-            @AuthenticationPrincipal String authenticatedUserId) {
-        User user = userService.fetchUserById(userId, authenticatedUserId);
+            @PathVariable @Pattern(regexp = "^usr-[A-Za-z0-9]+$", message = "User ID format is invalid")
+                    String userId) {
+        User user = userService.fetchUserById(userId);
         return userResponseMapper.toResponse(user);
+    }
+
+    @ResponseStatus(HttpStatus.OK)
+    @PatchMapping("/{userId}")
+    @Operation(summary = "Update user by ID", description = "Update the details of a user")
+    @ApiResponses(
+            value = {
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "The updated user details",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = UserResponse.class))),
+                @ApiResponse(
+                        responseCode = "400",
+                        description = "Invalid details supplied",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = BadRequestErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "401",
+                        description = "Access token is missing or invalid",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "403",
+                        description = "The user is not allowed to update this user",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "404",
+                        description = "User was not found",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "500",
+                        description = "An unexpected error occurred",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class)))
+            })
+    public UserResponse updateUser(
+            @PathVariable @Pattern(regexp = "^usr-[A-Za-z0-9]+$", message = "User ID format is invalid") String userId,
+            @Valid @RequestBody UpdateUserRequest request) {
+        UpdateUserCommand command = userRequestMapper.toCommand(request);
+        User updatedUser = userService.updateUser(userId, command);
+        return userResponseMapper.toResponse(updatedUser);
     }
 }

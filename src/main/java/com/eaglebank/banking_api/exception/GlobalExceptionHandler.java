@@ -4,18 +4,17 @@ import com.eaglebank.banking_api.dto.response.BadRequestErrorResponse;
 import com.eaglebank.banking_api.dto.response.ErrorResponse;
 import com.eaglebank.banking_api.dto.response.ValidationError;
 import com.eaglebank.banking_api.dto.response.ValidationErrorType;
-import java.util.List;
-
 import jakarta.validation.ConstraintViolationException;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 @Slf4j
 @RestControllerAdvice
@@ -79,17 +78,18 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(ex.getMessage());
     }
 
-    @ResponseStatus(HttpStatus.FORBIDDEN)
-    @ExceptionHandler(ForbiddenException.class)
-    public ErrorResponse handleForbidden(ForbiddenException ex) {
-        log.debug("Forbidden: {}", ex.getMessage());
-        return new ErrorResponse(ex.getMessage());
-    }
-
     @ExceptionHandler(NotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleNotFound(NotFoundException ex) {
         log.debug("Not found: {}", ex.getMessage());
         return new ErrorResponse(ex.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleAccessDenied(AccessDeniedException ex) {
+        log.debug("Access denied: {}", ex.getMessage());
+        return new ErrorResponse("You are not allowed to access this resource");
     }
 
     @ExceptionHandler(Exception.class)

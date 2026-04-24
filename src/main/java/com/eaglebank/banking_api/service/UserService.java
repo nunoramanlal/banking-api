@@ -1,12 +1,13 @@
 package com.eaglebank.banking_api.service;
 
 import com.eaglebank.banking_api.entity.User;
-import com.eaglebank.banking_api.exception.ForbiddenException;
 import com.eaglebank.banking_api.exception.NotFoundException;
 import com.eaglebank.banking_api.mapper.user.UserEntityMapper;
 import com.eaglebank.banking_api.repository.UserRepository;
 import com.eaglebank.banking_api.service.command.CreateUserCommand;
+import com.eaglebank.banking_api.service.command.UpdateUserCommand;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,16 +30,23 @@ public class UserService {
         return savedUser;
     }
 
+    @PreAuthorize("#userId == authentication.principal")
     @Transactional(readOnly = true)
-    public User fetchUserById(String userId, String authenticatedUserId) {
-        log.info("Fetching user: {} by authenticated user: {}", userId, authenticatedUserId);
+    public User fetchUserById(String userId) {
+        log.info("Fetching user: {}", userId);
 
-        if (!userId.equals(authenticatedUserId)) {
-            throw new ForbiddenException("You are not allowed to access this user");
-        }
+        return userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User was not found"));
+    }
 
-        return userRepository
-                .findById(userId)
-                .orElseThrow(() -> new NotFoundException("User was not found"));
+    @Transactional
+    @PreAuthorize("#userId == authentication.principal")
+    public User updateUser(String userId, UpdateUserCommand command) {
+        log.info("Updating user: {}", userId);
+
+        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User was not found"));
+
+        userEntityMapper.applyPatch(command, user);
+
+        return userRepository.save(user);
     }
 }
