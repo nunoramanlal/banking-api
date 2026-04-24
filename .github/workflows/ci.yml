@@ -10,9 +10,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
-      - run: ./mvnw --batch-mode verify
+
+      - name: Start Postgres
+        run: ./src/test/resources/docker/dockerStart.sh
+
+      - name: Build and test
+        run: ./mvnw --batch-mode verify
+
+      - name: Stop Postgres
+        if: always()
+        run: ./src/test/resources/docker/dockerShutdown.sh
