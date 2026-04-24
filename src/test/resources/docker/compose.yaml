@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: banking-api-postgres
+    environment:
+      POSTGRES_DB: bankingdb
+      POSTGRES_USER: banking
+      POSTGRES_PASSWORD: banking
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U banking -d bankingdb"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+volumes:
+  postgres_data:
