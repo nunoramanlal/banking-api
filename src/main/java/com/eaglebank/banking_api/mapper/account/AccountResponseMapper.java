@@ -1,7 +1,9 @@
 package com.eaglebank.banking_api.mapper.account;
 
 import com.eaglebank.banking_api.dto.response.BankAccountResponse;
+import com.eaglebank.banking_api.dto.response.ListBankAccountsResponse;
 import com.eaglebank.banking_api.entity.Account;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,5 +19,11 @@ public class AccountResponseMapper {
                 account.getCurrency(),
                 account.getCreatedTimestamp(),
                 account.getUpdatedTimestamp());
+    }
+
+    public ListBankAccountsResponse toListResponse(List<Account> accounts) {
+        List<BankAccountResponse> responses =
+                accounts.stream().map(this::toResponse).toList();
+        return new ListBankAccountsResponse(responses);
     }
 }

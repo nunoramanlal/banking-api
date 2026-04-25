@@ -115,9 +115,7 @@ public class AccountController {
     public ListBankAccountsResponse listAccounts(Authentication authentication) {
         String userId = (String) authentication.getPrincipal();
         List<Account> accounts = accountService.listAccounts(userId);
-        List<BankAccountResponse> responses =
-                accounts.stream().map(bankAccountResponseMapper::toResponse).toList();
-        return new ListBankAccountsResponse(responses);
+        return bankAccountResponseMapper.toListResponse(accounts);
     }
 
     @ResponseStatus(HttpStatus.OK)
