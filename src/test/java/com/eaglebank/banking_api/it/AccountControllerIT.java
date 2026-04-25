@@ -4,67 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.eaglebank.banking_api.dto.AddressDto;
 import com.eaglebank.banking_api.dto.request.CreateBankAccountRequest;
-import com.eaglebank.banking_api.dto.request.CreateUserRequest;
-import com.eaglebank.banking_api.dto.request.LoginRequest;
+import com.eaglebank.banking_api.dto.request.UpdateBankAccountRequest;
 import com.eaglebank.banking_api.dto.response.ValidationErrorType;
-import com.eaglebank.banking_api.repository.AccountRepository;
-import com.eaglebank.banking_api.repository.RefreshTokenRepository;
-import com.eaglebank.banking_api.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class AccountControllerIT {
-
-    private static final String TEST_NAME = "test-name";
-    private static final String TEST_EMAIL = "test@example.com";
-    private static final String TEST_PHONE = "+447911123456";
-    private static final String TEST_LINE1 = "test-line1";
-    private static final String TEST_TOWN = "test-town";
-    private static final String TEST_COUNTY = "test-county";
-    private static final String TEST_POSTCODE = "TEST 123";
-
-    private static final String ACCOUNTS_ENDPOINT = "/v1/accounts";
-    private static final String ACCOUNT_NAME = "Personal Bank Account";
-    private static final String ACCOUNT_TYPE_PERSONAL = "personal";
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private AccountRepository accountRepository;
-
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @AfterEach
-    void cleanUp() {
-        accountRepository.deleteAll();
-        refreshTokenRepository.deleteAll();
-        userRepository.deleteAll();
-    }
+class AccountControllerIT extends IntegrationUtils {
 
     @Nested
     class CreateAccount {
@@ -375,51 +327,137 @@ class AccountControllerIT {
         }
     }
 
-    private String createAccount(String accessToken, String name) throws Exception {
-        CreateBankAccountRequest request = new CreateBankAccountRequest(name, ACCOUNT_TYPE_PERSONAL);
+    @Nested
+    class UpdateAccount {
 
-        MvcResult result = mockMvc.perform(post(ACCOUNTS_ENDPOINT)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        @Test
+        void shouldUpdateAccountWhenOwnedByAuthenticatedUser() throws Exception {
+            createUserAndGetId(TEST_EMAIL);
+            String accessToken = loginAndGetAccessToken(TEST_EMAIL);
+            String accountNumber = createAccount(accessToken, "Original Name");
 
-        return objectMapper
-                .readTree(result.getResponse().getContentAsString())
-                .get("accountNumber")
-                .asText();
-    }
+            UpdateBankAccountRequest request = new UpdateBankAccountRequest("Updated Account Name", "personal");
 
-    private String createUserAndGetId(String email) throws Exception {
-        CreateUserRequest request = new CreateUserRequest(
-                TEST_NAME,
-                new AddressDto(TEST_LINE1, null, null, TEST_TOWN, TEST_COUNTY, TEST_POSTCODE),
-                TEST_PHONE,
-                email);
+            mockMvc.perform(patch(ACCOUNTS_ENDPOINT + "/" + accountNumber)
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.accountNumber").value(accountNumber))
+                    .andExpect(jsonPath("$.name").value("Updated Account Name"))
+                    .andExpect(jsonPath("$.accountType").value(ACCOUNT_TYPE_PERSONAL))
+                    .andExpect(jsonPath("$.sortCode").value("10-10-10"))
+                    .andExpect(jsonPath("$.balance").value(0.00))
+                    .andExpect(jsonPath("$.currency").value("GBP"));
+        }
 
-        MvcResult result = mockMvc.perform(post("/v1/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        @Test
+        void shouldUpdateOnlyProvidedFields() throws Exception {
+            createUserAndGetId(TEST_EMAIL);
+            String accessToken = loginAndGetAccessToken(TEST_EMAIL);
+            String accountNumber = createAccount(accessToken, "Original Name");
 
-        return objectMapper
-                .readTree(result.getResponse().getContentAsString())
-                .get("id")
-                .asText();
-    }
+            // Only update name, leave accountType null
+            UpdateBankAccountRequest partialRequest = new UpdateBankAccountRequest("Only Name Changed", null);
 
-    private String loginAndGetAccessToken(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(email))))
-                .andExpect(status().isOk())
-                .andReturn();
+            mockMvc.perform(patch(ACCOUNTS_ENDPOINT + "/" + accountNumber)
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(partialRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name").value("Only Name Changed"))
+                    .andExpect(jsonPath("$.accountType").value(ACCOUNT_TYPE_PERSONAL));
+        }
 
-        return objectMapper
-                .readTree(result.getResponse().getContentAsString())
-                .get("accessToken")
-                .asText();
+        @Test
+        void shouldReturnForbiddenWhenUpdatingAnotherUsersAccount() throws Exception {
+            // User 1 creates an account
+            createUserAndGetId("user1@example.com");
+            String user1Token = loginAndGetAccessToken("user1@example.com");
+            String user1AccountNumber = createAccount(user1Token, "User 1 Account");
+
+            // User 2 tries to update User 1's account
+            createUserAndGetId("user2@example.com");
+            String user2Token = loginAndGetAccessToken("user2@example.com");
+
+            UpdateBankAccountRequest request = new UpdateBankAccountRequest("Hijacked Name", null);
+
+            mockMvc.perform(patch(ACCOUNTS_ENDPOINT + "/" + user1AccountNumber)
+                            .header("Authorization", "Bearer " + user2Token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message").exists());
+        }
+
+        @Test
+        void shouldReturnNotFoundWhenAccountDoesNotExist() throws Exception {
+            createUserAndGetId(TEST_EMAIL);
+            String accessToken = loginAndGetAccessToken(TEST_EMAIL);
+
+            UpdateBankAccountRequest request = new UpdateBankAccountRequest("New Name", null);
+
+            mockMvc.perform(patch(ACCOUNTS_ENDPOINT + "/01999999")
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("Bank account was not found"));
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenAccountNumberFormatIsInvalid() throws Exception {
+            createUserAndGetId(TEST_EMAIL);
+            String accessToken = loginAndGetAccessToken(TEST_EMAIL);
+
+            UpdateBankAccountRequest request = new UpdateBankAccountRequest("New Name", null);
+
+            mockMvc.perform(patch(ACCOUNTS_ENDPOINT + "/invalid-format")
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Invalid details supplied"))
+                    .andExpect(jsonPath("$.details").isArray())
+                    .andExpect(jsonPath("$.details[0].field").value("accountNumber"));
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenAccountTypeIsInvalid() throws Exception {
+            createUserAndGetId(TEST_EMAIL);
+            String accessToken = loginAndGetAccessToken(TEST_EMAIL);
+            String accountNumber = createAccount(accessToken, "My Account");
+
+            UpdateBankAccountRequest request = new UpdateBankAccountRequest(null, "business");
+
+            mockMvc.perform(patch(ACCOUNTS_ENDPOINT + "/" + accountNumber)
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Invalid details supplied"))
+                    .andExpect(jsonPath("$.details[0].field").value("accountType"));
+        }
+
+        @Test
+        void shouldReturnUnauthorizedWhenNoToken() throws Exception {
+            UpdateBankAccountRequest request = new UpdateBankAccountRequest("New Name", null);
+
+            mockMvc.perform(patch(ACCOUNTS_ENDPOINT + "/01000001")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void shouldReturnUnauthorizedWhenInvalidToken() throws Exception {
+            UpdateBankAccountRequest request = new UpdateBankAccountRequest("New Name", null);
+
+            mockMvc.perform(patch(ACCOUNTS_ENDPOINT + "/01000001")
+                            .header("Authorization", "Bearer invalid-token")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isUnauthorized());
+        }
     }
 }

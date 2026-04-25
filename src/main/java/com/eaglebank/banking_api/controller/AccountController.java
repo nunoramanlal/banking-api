@@ -1,6 +1,7 @@
 package com.eaglebank.banking_api.controller;
 
 import com.eaglebank.banking_api.dto.request.CreateBankAccountRequest;
+import com.eaglebank.banking_api.dto.request.UpdateBankAccountRequest;
 import com.eaglebank.banking_api.dto.response.BadRequestErrorResponse;
 import com.eaglebank.banking_api.dto.response.BankAccountResponse;
 import com.eaglebank.banking_api.dto.response.ErrorResponse;
@@ -9,6 +10,7 @@ import com.eaglebank.banking_api.entity.Account;
 import com.eaglebank.banking_api.mapper.account.AccountResponseMapper;
 import com.eaglebank.banking_api.service.AccountService;
 import com.eaglebank.banking_api.service.command.CreateAccountCommand;
+import com.eaglebank.banking_api.service.command.UpdateAccountCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -172,6 +174,65 @@ public class AccountController {
             Authentication authentication) {
         String userId = (String) authentication.getPrincipal();
         Account account = accountService.fetchAccountByAccountNumber(userId, Long.valueOf(accountNumber));
+        return bankAccountResponseMapper.toResponse(account);
+    }
+
+    @ResponseStatus(HttpStatus.OK)
+    @PatchMapping("/{accountNumber}")
+    @Operation(summary = "Update account by account number", description = "Update the details of a bank account")
+    @ApiResponses(
+            value = {
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "The updated bank account details",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = BankAccountResponse.class))),
+                @ApiResponse(
+                        responseCode = "400",
+                        description = "Invalid details supplied",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = BadRequestErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "401",
+                        description = "Access token is missing or invalid",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "403",
+                        description = "The user is not allowed to update the bank account details",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "404",
+                        description = "Bank account was not found",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "500",
+                        description = "An unexpected error occurred",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class)))
+            })
+    public BankAccountResponse updateAccount(
+            @PathVariable @Pattern(regexp = "^01\\d{6}$", message = "Account number format is invalid")
+                    String accountNumber,
+            @Valid @RequestBody UpdateBankAccountRequest request,
+            Authentication authentication) {
+        String userId = (String) authentication.getPrincipal();
+        UpdateAccountCommand command = new UpdateAccountCommand(request.name(), request.accountType());
+        Account account = accountService.updateAccount(userId, Long.valueOf(accountNumber), command);
         return bankAccountResponseMapper.toResponse(account);
     }
 }

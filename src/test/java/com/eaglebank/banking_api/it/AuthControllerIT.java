@@ -4,57 +4,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.eaglebank.banking_api.dto.AddressDto;
-import com.eaglebank.banking_api.dto.request.CreateUserRequest;
 import com.eaglebank.banking_api.dto.request.LoginRequest;
 import com.eaglebank.banking_api.dto.request.RefreshTokenRequest;
-import com.eaglebank.banking_api.repository.RefreshTokenRepository;
-import com.eaglebank.banking_api.repository.UserRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class AuthControllerIT {
+class AuthControllerIT extends IntegrationUtils {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @AfterEach
-    void cleanUp() {
-        refreshTokenRepository.deleteAll();
-        userRepository.deleteAll();
-    }
+    private static final String REFRESH_ENDPOINT = "/v1/auth/refresh";
 
     @Nested
     class Login {
 
         @Test
         void shouldReturnAccessAndRefreshTokensWhenEmailExists() throws Exception {
-            createUser("test@example.com");
+            createUserAndGetId(TEST_EMAIL);
 
-            LoginRequest request = new LoginRequest("test@example.com");
+            LoginRequest request = new LoginRequest(TEST_EMAIL);
 
-            mockMvc.perform(post("/v1/auth/login")
+            mockMvc.perform(post(LOGIN_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -68,21 +37,21 @@ class AuthControllerIT {
 
         @Test
         void shouldRevokePreviousRefreshTokenWhenLoggingInTwice() throws Exception {
-            createUser("test@example.com");
+            createUserAndGetId(TEST_EMAIL);
 
-            String firstRefreshToken = loginAndGetRefreshToken("test@example.com");
-            String secondRefreshToken = loginAndGetRefreshToken("test@example.com");
+            String firstRefreshToken = loginAndGetRefreshToken(TEST_EMAIL);
+            String secondRefreshToken = loginAndGetRefreshToken(TEST_EMAIL);
 
             assertThat(firstRefreshToken).isNotEqualTo(secondRefreshToken);
 
             // Old refresh token should no longer work
-            mockMvc.perform(post("/v1/auth/refresh")
+            mockMvc.perform(post(REFRESH_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(new RefreshTokenRequest(firstRefreshToken))))
                     .andExpect(status().isUnauthorized());
 
             // New refresh token should work
-            mockMvc.perform(post("/v1/auth/refresh")
+            mockMvc.perform(post(REFRESH_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(new RefreshTokenRequest(secondRefreshToken))))
                     .andExpect(status().isOk());
@@ -92,7 +61,7 @@ class AuthControllerIT {
         void shouldReturnUnauthorizedWhenEmailDoesNotExist() throws Exception {
             LoginRequest request = new LoginRequest("nonexistent@example.com");
 
-            mockMvc.perform(post("/v1/auth/login")
+            mockMvc.perform(post(LOGIN_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isUnauthorized())
@@ -103,7 +72,7 @@ class AuthControllerIT {
 
         @Test
         void shouldReturnBadRequestWhenEmailIsMissing() throws Exception {
-            mockMvc.perform(post("/v1/auth/login")
+            mockMvc.perform(post(LOGIN_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isBadRequest())
@@ -114,7 +83,7 @@ class AuthControllerIT {
         void shouldReturnBadRequestWhenEmailIsInvalidFormat() throws Exception {
             LoginRequest request = new LoginRequest("not-an-email");
 
-            mockMvc.perform(post("/v1/auth/login")
+            mockMvc.perform(post(LOGIN_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
@@ -123,7 +92,7 @@ class AuthControllerIT {
 
         @Test
         void shouldReturnBadRequestWhenRequestBodyIsEmpty() throws Exception {
-            mockMvc.perform(post("/v1/auth/login")
+            mockMvc.perform(post(LOGIN_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(""))
                     .andExpect(status().isBadRequest());
@@ -135,12 +104,12 @@ class AuthControllerIT {
 
         @Test
         void shouldReturnNewTokensWhenRefreshTokenIsValid() throws Exception {
-            createUser("test@example.com");
-            String refreshToken = loginAndGetRefreshToken("test@example.com");
+            createUserAndGetId(TEST_EMAIL);
+            String refreshToken = loginAndGetRefreshToken(TEST_EMAIL);
 
             RefreshTokenRequest request = new RefreshTokenRequest(refreshToken);
 
-            mockMvc.perform(post("/v1/auth/refresh")
+            mockMvc.perform(post(REFRESH_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -152,17 +121,17 @@ class AuthControllerIT {
 
         @Test
         void shouldRevokeOldRefreshTokenAfterRotation() throws Exception {
-            createUser("test@example.com");
-            String oldRefreshToken = loginAndGetRefreshToken("test@example.com");
+            createUserAndGetId(TEST_EMAIL);
+            String oldRefreshToken = loginAndGetRefreshToken(TEST_EMAIL);
 
             // First refresh - succeeds
-            mockMvc.perform(post("/v1/auth/refresh")
+            mockMvc.perform(post(REFRESH_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(new RefreshTokenRequest(oldRefreshToken))))
                     .andExpect(status().isOk());
 
             // Try to reuse the old token - should fail
-            mockMvc.perform(post("/v1/auth/refresh")
+            mockMvc.perform(post(REFRESH_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(new RefreshTokenRequest(oldRefreshToken))))
                     .andExpect(status().isUnauthorized())
@@ -173,7 +142,7 @@ class AuthControllerIT {
         void shouldReturnUnauthorizedWhenRefreshTokenDoesNotExist() throws Exception {
             RefreshTokenRequest request = new RefreshTokenRequest("nonexistent-token");
 
-            mockMvc.perform(post("/v1/auth/refresh")
+            mockMvc.perform(post(REFRESH_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isUnauthorized())
@@ -184,35 +153,11 @@ class AuthControllerIT {
         void shouldReturnBadRequestWhenRefreshTokenIsBlank() throws Exception {
             RefreshTokenRequest request = new RefreshTokenRequest("");
 
-            mockMvc.perform(post("/v1/auth/refresh")
+            mockMvc.perform(post(REFRESH_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.details[0].field").value("refreshToken"));
         }
-    }
-
-    private void createUser(String email) throws Exception {
-        CreateUserRequest request = new CreateUserRequest(
-                "test-name",
-                new AddressDto("test-line1", null, null, "test-town", "test-county", "TEST 123"),
-                "+447911123456",
-                email);
-
-        mockMvc.perform(post("/v1/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-    }
-
-    private String loginAndGetRefreshToken(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(email))))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
-        return response.get("refreshToken").asText();
     }
 }
