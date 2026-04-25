@@ -15,6 +15,7 @@ This service exposes endpoints for CRUD operations, with stateless JWT authentic
 - **jjwt** for JWT generation and parsing
 - **Lombok** for boilerplate reduction
 - **JUnit 5** with **Mockito** and **AssertJ** for testing
+- **JaCoCo** for test coverage reporting
 - **Springdoc OpenAPI** for API documentation
 - **Spotless** with **Palantir Java Format** for code formatting
 - **Docker**
@@ -48,7 +49,7 @@ The API will be available at `http://localhost:8080`.
 # Start PostgreSQL
 ./src/test/resources/docker/dockerStart.sh
 
-# Run all tests (unit + integration)
+# Run all tests (unit + integration) and generate coverage report
 ./mvnw verify
 
 # Tear down
@@ -63,6 +64,7 @@ The application uses PostgreSQL with Flyway migrations. On startup, Flyway autom
 
 - `V1__create_users_table.sql` — creates the `users` table with address fields and audit columns
 - `V2__create_refresh_tokens_table.sql` — creates the `refresh_tokens` table with foreign key to users
+- `V3__create_account_table.sql` — creates the `bank_accounts` table with sequence-generated account numbers
 
 ## Example usage
 
@@ -163,7 +165,8 @@ Get new { accessToken, refreshToken } (refresh token rotated)
 ## Persistence
 
 - **UUID-prefixed IDs** — users get `usr-<uuid>` format matching the spec
-- **Optimistic locking** — `@Version` on `User` prevents lost updates under concurrent modification
+- **Sequence-generated account numbers** — bank accounts use a Postgres sequence to produce unique 8-digit numbers in the format `01XXXXXX`
+- **Optimistic locking** — `@Version` on entities prevents lost updates under concurrent modification
 - **Auditing** — `@CreatedBy` / `@LastModifiedBy` automatically populated via `AuditorAware` and the authenticated principal
 - **Cascade deletes** — deleting a user cascades to their refresh tokens
 - **Unique email constraint** — enforced at the DB level
@@ -178,7 +181,8 @@ Get new { accessToken, refreshToken } (refresh token rotated)
 
 **Unit tests** (`src/test/java`)
 
-**Integration tests** (`*IT.java`) 
+**Integration tests** (`*IT.java` in `src/test/java`)
+
 ```bash
 # Run only unit tests (fast, no Docker needed)
 ./mvnw test
@@ -188,6 +192,15 @@ Get new { accessToken, refreshToken } (refresh token rotated)
 ./mvnw verify
 ./src/test/resources/docker/dockerShutdown.sh
 ```
+
+### Coverage
+After running `./mvnw verify`, open the report at:
+
+```
+target/site/jacoco/index.html
+```
+
+In CI, the report is uploaded as a workflow artifact named `jacoco-coverage-report` and can be downloaded from the GitHub Actions run page.
 
 ## Docker
 
@@ -212,4 +225,4 @@ The project uses **Palantir Java Format** enforced via Spotless. Formatting runs
 
 ## CI/CD
 
-GitHub Actions runs `./mvnw verify` on every push to `main` and every pull request. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+GitHub Actions runs `./mvnw verify` on every push to `main` and every pull request. The workflow starts PostgreSQL via `dockerStart.sh`, runs the full test suite, and uploads the JaCoCo coverage report as a downloadable artifact. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
