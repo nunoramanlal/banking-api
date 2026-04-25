@@ -1,6 +1,6 @@
 package com.eaglebank.banking_api.dto.response;
 
-import com.eaglebank.banking_api.entity.Currency;
+import com.eaglebank.banking_api.entity.enums.Currency;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

@@ -7,6 +7,7 @@ import com.eaglebank.banking_api.exception.NotFoundException;
 import com.eaglebank.banking_api.repository.AccountRepository;
 import com.eaglebank.banking_api.repository.UserRepository;
 import com.eaglebank.banking_api.service.command.CreateAccountCommand;
+import com.eaglebank.banking_api.service.command.UpdateAccountCommand;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -57,5 +58,27 @@ public class AccountService {
         }
 
         return account;
+    }
+
+    @Transactional
+    public Account updateAccount(String userId, Long accountNumber, UpdateAccountCommand command) {
+        log.info("Updating bank account: {} for user: {}", accountNumber, userId);
+
+        Account account = accountRepository
+                .findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new NotFoundException("Bank account was not found"));
+
+        if (!account.getUser().getId().equals(userId)) {
+            throw new ForbiddenException("You are not allowed to update this bank account");
+        }
+
+        if (command.name() != null) {
+            account.setName(command.name());
+        }
+        if (command.accountType() != null) {
+            account.setAccountType(command.accountType());
+        }
+
+        return accountRepository.save(account);
     }
 }

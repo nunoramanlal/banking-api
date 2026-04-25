@@ -7,60 +7,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.eaglebank.banking_api.dto.AddressDto;
 import com.eaglebank.banking_api.dto.request.CreateBankAccountRequest;
 import com.eaglebank.banking_api.dto.request.CreateUserRequest;
-import com.eaglebank.banking_api.dto.request.LoginRequest;
 import com.eaglebank.banking_api.dto.request.UpdateUserRequest;
 import com.eaglebank.banking_api.dto.response.ValidationErrorType;
 import com.eaglebank.banking_api.entity.User;
-import com.eaglebank.banking_api.repository.RefreshTokenRepository;
-import com.eaglebank.banking_api.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class UserControllerIT {
-
-    private static final String TEST_NAME = "test-name";
-    private static final String TEST_EMAIL = "test@example.com";
-    private static final String TEST_PHONE = "+447911123456";
-    private static final String TEST_LINE1 = "test-line1";
-    private static final String TEST_LINE2 = "test-line2";
-    private static final String TEST_LINE3 = "test-line3";
-    private static final String TEST_TOWN = "test-town";
-    private static final String TEST_COUNTY = "test-county";
-    private static final String TEST_POSTCODE = "TEST 123";
-    private static final String USERS_ENDPOINT = "/v1/users/";
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @AfterEach
-    void cleanUp() {
-        refreshTokenRepository.deleteAll();
-        userRepository.deleteAll();
-    }
+class UserControllerIT extends IntegrationUtils {
 
     @Nested
     class CreateUser {
@@ -73,7 +31,7 @@ class UserControllerIT {
                     TEST_PHONE,
                     TEST_EMAIL);
 
-            mockMvc.perform(post("/v1/users")
+            mockMvc.perform(post(USERS_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated())
@@ -98,17 +56,17 @@ class UserControllerIT {
             CreateUserRequest request = new CreateUserRequest(
                     TEST_NAME,
                     new AddressDto(TEST_LINE1, null, null, TEST_TOWN, TEST_COUNTY, TEST_POSTCODE),
-                    "+447700900123",
+                    TEST_PHONE,
                     TEST_EMAIL);
 
-            mockMvc.perform(post("/v1/users")
+            mockMvc.perform(post(USERS_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.matchesPattern("^usr-[A-Za-z0-9]+$")))
                     .andExpect(jsonPath("$.name").value(TEST_NAME))
                     .andExpect(jsonPath("$.email").value(TEST_EMAIL))
-                    .andExpect(jsonPath("$.phoneNumber").value("+447700900123"))
+                    .andExpect(jsonPath("$.phoneNumber").value(TEST_PHONE))
                     .andExpect(jsonPath("$.address.line1").value(TEST_LINE1))
                     .andExpect(jsonPath("$.address.line2").isEmpty())
                     .andExpect(jsonPath("$.address.line3").isEmpty())
@@ -123,7 +81,7 @@ class UserControllerIT {
 
         @Test
         void shouldReturnBadRequestWhenRequestBodyIsEmpty() throws Exception {
-            mockMvc.perform(post("/v1/users")
+            mockMvc.perform(post(USERS_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(""))
                     .andExpect(status().isBadRequest())
@@ -133,7 +91,7 @@ class UserControllerIT {
 
         @Test
         void shouldReturnBadRequestWhenRequestBodyPayloadIsEmpty() throws Exception {
-            mockMvc.perform(post("/v1/users")
+            mockMvc.perform(post(USERS_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isBadRequest())
@@ -146,15 +104,15 @@ class UserControllerIT {
             CreateUserRequest firstRequest =
                     new CreateUserRequest(TEST_NAME, validAddress(), TEST_PHONE, "duplicate@example.com");
 
-            mockMvc.perform(post("/v1/users")
+            mockMvc.perform(post(USERS_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(firstRequest)))
                     .andExpect(status().isCreated());
 
             CreateUserRequest duplicateRequest =
-                    new CreateUserRequest("different-name", validAddress(), "+447911999999", "duplicate@example.com");
+                    new CreateUserRequest("different-name", validAddress(), TEST_PHONE, "duplicate@example.com");
 
-            mockMvc.perform(post("/v1/users")
+            mockMvc.perform(post(USERS_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(duplicateRequest)))
                     .andExpect(status().is5xxServerError())
@@ -168,7 +126,7 @@ class UserControllerIT {
         void shouldReturnBadRequestForInvalidInputs(
                 String description, CreateUserRequest request, String expectedField, ValidationErrorType expectedType)
                 throws Exception {
-            mockMvc.perform(post("/v1/users")
+            mockMvc.perform(post(USERS_ENDPOINT)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
@@ -254,7 +212,7 @@ class UserControllerIT {
             String userId = createUserAndGetId(TEST_EMAIL);
             String accessToken = loginAndGetAccessToken(TEST_EMAIL);
 
-            mockMvc.perform(get(USERS_ENDPOINT + userId).header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(get(USERS_ENDPOINT + "/" + userId).header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(userId))
                     .andExpect(jsonPath("$.name").value(TEST_NAME))
@@ -275,7 +233,7 @@ class UserControllerIT {
             createUserAndGetId(TEST_EMAIL);
             String accessToken = loginAndGetAccessToken(TEST_EMAIL);
 
-            mockMvc.perform(get(USERS_ENDPOINT + "invalid-id-format").header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(get(USERS_ENDPOINT + "/invalid-id-format").header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.message").value("Invalid details supplied"))
                     .andExpect(jsonPath("$.details").isArray())
@@ -290,7 +248,7 @@ class UserControllerIT {
             String otherUserId = createUserAndGetId("user2@example.com");
             String accessToken = loginAndGetAccessToken("user1@example.com");
 
-            mockMvc.perform(get(USERS_ENDPOINT + otherUserId).header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(get(USERS_ENDPOINT + "/" + otherUserId).header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.message").exists());
         }
@@ -302,7 +260,7 @@ class UserControllerIT {
 
             userRepository.deleteById(userId);
 
-            mockMvc.perform(get(USERS_ENDPOINT + userId).header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(get(USERS_ENDPOINT + "/" + userId).header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.message").value("User was not found"));
         }
@@ -312,18 +270,18 @@ class UserControllerIT {
             createUserAndGetId(TEST_EMAIL);
             String accessToken = loginAndGetAccessToken(TEST_EMAIL);
 
-            mockMvc.perform(get(USERS_ENDPOINT + "usr-nonexistent").header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(get(USERS_ENDPOINT + "/usr-nonexistent").header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isForbidden());
         }
 
         @Test
         void shouldReturnUnauthorizedWhenNoToken() throws Exception {
-            mockMvc.perform(get(USERS_ENDPOINT + "usr-anything")).andExpect(status().isUnauthorized());
+            mockMvc.perform(get(USERS_ENDPOINT + "/usr-anything")).andExpect(status().isUnauthorized());
         }
 
         @Test
         void shouldReturnUnauthorizedWhenInvalidToken() throws Exception {
-            mockMvc.perform(get(USERS_ENDPOINT + "usr-anything").header("Authorization", "Bearer invalid-token"))
+            mockMvc.perform(get(USERS_ENDPOINT + "/usr-anything").header("Authorization", "Bearer invalid-token"))
                     .andExpect(status().isUnauthorized());
         }
     }
@@ -342,7 +300,7 @@ class UserControllerIT {
                     "+447911999999",
                     "updated@example.com");
 
-            mockMvc.perform(patch(USERS_ENDPOINT + userId)
+            mockMvc.perform(patch(USERS_ENDPOINT + "/" + userId)
                             .header("Authorization", "Bearer " + accessToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
@@ -364,7 +322,7 @@ class UserControllerIT {
 
             UpdateUserRequest partialRequest = new UpdateUserRequest("only-name-changed", null, null, null);
 
-            mockMvc.perform(patch(USERS_ENDPOINT + userId)
+            mockMvc.perform(patch(USERS_ENDPOINT + "/" + userId)
                             .header("Authorization", "Bearer " + accessToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(partialRequest)))
@@ -381,7 +339,7 @@ class UserControllerIT {
 
             UpdateUserRequest request = new UpdateUserRequest("updated-name", null, null, null);
 
-            mockMvc.perform(patch(USERS_ENDPOINT + userId)
+            mockMvc.perform(patch(USERS_ENDPOINT + "/" + userId)
                             .header("Authorization", "Bearer " + accessToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
@@ -400,7 +358,7 @@ class UserControllerIT {
 
             UpdateUserRequest request = new UpdateUserRequest("hacked-name", null, null, null);
 
-            mockMvc.perform(patch(USERS_ENDPOINT + otherUserId)
+            mockMvc.perform(patch(USERS_ENDPOINT + "/" + otherUserId)
                             .header("Authorization", "Bearer " + accessToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
@@ -415,7 +373,7 @@ class UserControllerIT {
 
             UpdateUserRequest request = new UpdateUserRequest("name", null, null, null);
 
-            mockMvc.perform(patch(USERS_ENDPOINT + "usr-nonexistent")
+            mockMvc.perform(patch(USERS_ENDPOINT + "/usr-nonexistent")
                             .header("Authorization", "Bearer " + accessToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
@@ -426,7 +384,7 @@ class UserControllerIT {
         void shouldReturnUnauthorizedWhenNoToken() throws Exception {
             UpdateUserRequest request = new UpdateUserRequest("name", null, null, null);
 
-            mockMvc.perform(patch(USERS_ENDPOINT + "usr-anything")
+            mockMvc.perform(patch(USERS_ENDPOINT + "/usr-anything")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isUnauthorized());
@@ -439,7 +397,7 @@ class UserControllerIT {
 
             UpdateUserRequest request = new UpdateUserRequest("test-name", null, null, null);
 
-            mockMvc.perform(patch(USERS_ENDPOINT + "invalid-id-format")
+            mockMvc.perform(patch(USERS_ENDPOINT + "/invalid-id-format")
                             .header("Authorization", "Bearer " + accessToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
@@ -459,7 +417,7 @@ class UserControllerIT {
             String userId = createUserAndGetId(TEST_EMAIL);
             String accessToken = loginAndGetAccessToken(TEST_EMAIL);
 
-            mockMvc.perform(patch(USERS_ENDPOINT + userId)
+            mockMvc.perform(patch(USERS_ENDPOINT + "/" + userId)
                             .header("Authorization", "Bearer " + accessToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
@@ -517,7 +475,7 @@ class UserControllerIT {
             String userId = createUserAndGetId(TEST_EMAIL);
             String accessToken = loginAndGetAccessToken(TEST_EMAIL);
 
-            mockMvc.perform(delete(USERS_ENDPOINT + userId).header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(delete(USERS_ENDPOINT + "/" + userId).header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isNoContent());
 
             assertThat(userRepository.findById(userId)).isEmpty();
@@ -529,14 +487,14 @@ class UserControllerIT {
             String accessToken = loginAndGetAccessToken(TEST_EMAIL);
 
             // Create a bank account for this user
-            CreateBankAccountRequest accountRequest = new CreateBankAccountRequest("Personal Bank Account", "personal");
-            mockMvc.perform(post("/v1/accounts")
+            CreateBankAccountRequest accountRequest = new CreateBankAccountRequest(ACCOUNT_NAME, ACCOUNT_TYPE_PERSONAL);
+            mockMvc.perform(post(ACCOUNTS_ENDPOINT)
                             .header("Authorization", "Bearer " + accessToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(accountRequest)))
                     .andExpect(status().isCreated());
 
-            mockMvc.perform(delete(USERS_ENDPOINT + userId).header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(delete(USERS_ENDPOINT + "/" + userId).header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.message")
                             .value("A user cannot be deleted when they are associated with a bank account"));
@@ -551,7 +509,7 @@ class UserControllerIT {
             String otherUserId = createUserAndGetId("user2@example.com");
             String accessToken = loginAndGetAccessToken("user1@example.com");
 
-            mockMvc.perform(delete(USERS_ENDPOINT + otherUserId).header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(delete(USERS_ENDPOINT + "/" + otherUserId).header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.message").exists());
 
@@ -564,18 +522,19 @@ class UserControllerIT {
             createUserAndGetId(TEST_EMAIL);
             String accessToken = loginAndGetAccessToken(TEST_EMAIL);
 
-            mockMvc.perform(delete(USERS_ENDPOINT + "usr-nonexistent").header("Authorization", "Bearer " + accessToken))
+            mockMvc.perform(delete(USERS_ENDPOINT + "/usr-nonexistent")
+                            .header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isForbidden());
         }
 
         @Test
         void shouldReturnUnauthorizedWhenNoToken() throws Exception {
-            mockMvc.perform(delete(USERS_ENDPOINT + "usr-anything")).andExpect(status().isUnauthorized());
+            mockMvc.perform(delete(USERS_ENDPOINT + "/usr-anything")).andExpect(status().isUnauthorized());
         }
 
         @Test
         void shouldReturnUnauthorizedWhenInvalidToken() throws Exception {
-            mockMvc.perform(delete(USERS_ENDPOINT + "usr-anything").header("Authorization", "Bearer invalid-token"))
+            mockMvc.perform(delete(USERS_ENDPOINT + "/usr-anything").header("Authorization", "Bearer invalid-token"))
                     .andExpect(status().isUnauthorized());
         }
 
@@ -584,7 +543,7 @@ class UserControllerIT {
             createUserAndGetId(TEST_EMAIL);
             String accessToken = loginAndGetAccessToken(TEST_EMAIL);
 
-            mockMvc.perform(delete(USERS_ENDPOINT + "invalid-id-format")
+            mockMvc.perform(delete(USERS_ENDPOINT + "/invalid-id-format")
                             .header("Authorization", "Bearer " + accessToken))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.message").value("Invalid details supplied"))
@@ -593,37 +552,5 @@ class UserControllerIT {
                     .andExpect(jsonPath("$.details[0].message").value("User ID format is invalid"))
                     .andExpect(jsonPath("$.details[0].type").value(ValidationErrorType.INVALID_FORMAT.name()));
         }
-    }
-
-    private String createUserAndGetId(String email) throws Exception {
-        CreateUserRequest request = new CreateUserRequest(
-                TEST_NAME,
-                new AddressDto(TEST_LINE1, null, null, TEST_TOWN, TEST_COUNTY, TEST_POSTCODE),
-                TEST_PHONE,
-                email);
-
-        MvcResult result = mockMvc.perform(post("/v1/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        return objectMapper
-                .readTree(result.getResponse().getContentAsString())
-                .get("id")
-                .asText();
-    }
-
-    private String loginAndGetAccessToken(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(email))))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        return objectMapper
-                .readTree(result.getResponse().getContentAsString())
-                .get("accessToken")
-                .asText();
     }
 }

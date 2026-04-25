@@ -106,6 +106,13 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(ex.getMessage());
     }
 
+    @ExceptionHandler(UnprocessableEntityException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ErrorResponse handleUnprocessableEntity(UnprocessableEntityException ex) {
+        log.warn("Unprocessable entity: {}", ex.getMessage());
+        return new ErrorResponse(ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleGeneralException(Exception ex) {

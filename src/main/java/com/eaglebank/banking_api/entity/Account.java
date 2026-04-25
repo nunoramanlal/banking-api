@@ -1,5 +1,6 @@
 package com.eaglebank.banking_api.entity;
 
+import com.eaglebank.banking_api.entity.enums.Currency;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -40,7 +41,7 @@ public class Account {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 3)
-    private com.eaglebank.banking_api.entity.Currency currency = com.eaglebank.banking_api.entity.Currency.GBP;
+    private Currency currency = Currency.GBP;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

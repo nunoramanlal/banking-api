@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.eaglebank.banking_api.dto.response.BankAccountResponse;
 import com.eaglebank.banking_api.entity.Account;
-import com.eaglebank.banking_api.entity.Currency;
+import com.eaglebank.banking_api.entity.enums.Currency;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
