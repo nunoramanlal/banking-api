@@ -21,3 +21,9 @@ Thumbs.db
 
 # Tests / logs
 *.log
+
+# JaCoCo
+*.exec
+target/site/jacoco/
+target/site/jacoco-it/
+target/site/jacoco-merged/
