@@ -176,4 +176,59 @@ public class UserController {
         User updatedUser = userService.updateUser(userId, command);
         return userResponseMapper.toResponse(updatedUser);
     }
+
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @DeleteMapping("/{userId}")
+    @Operation(summary = "Delete user by ID", description = "Delete a user account")
+    @ApiResponses(
+            value = {
+                @ApiResponse(responseCode = "204", description = "The user has been deleted"),
+                @ApiResponse(
+                        responseCode = "400",
+                        description = "The request didn't supply all the necessary data",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = BadRequestErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "401",
+                        description = "Access token is missing or invalid",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "403",
+                        description = "The user is not allowed to access the transaction",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "404",
+                        description = "User was not found",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "409",
+                        description = "A user cannot be deleted when they are associated with a bank account",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class))),
+                @ApiResponse(
+                        responseCode = "500",
+                        description = "An unexpected error occurred",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = ErrorResponse.class)))
+            })
+    public void deleteUser(
+            @PathVariable @Pattern(regexp = "^usr-[A-Za-z0-9]+$", message = "User ID format is invalid")
+                    String userId) {
+        userService.deleteUser(userId);
+    }
 }
