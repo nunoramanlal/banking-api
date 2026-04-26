@@ -14,21 +14,21 @@ import lombok.Setter;
 public class RefreshToken {
 
     @Id
-    @Column(updatable = false, nullable = false)
-    private String token;
+    @Column(name = "token_hash", updatable = false, nullable = false, length = 64)
+    private String tokenHash;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
     @Column(nullable = false)
     private boolean revoked;
 
-    public RefreshToken(String token, User user, LocalDateTime expiresAt) {
-        this.token = token;
+    public RefreshToken(String tokenHash, User user, LocalDateTime expiresAt) {
+        this.tokenHash = tokenHash;
         this.user = user;
         this.expiresAt = expiresAt;
         this.revoked = false;

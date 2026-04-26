@@ -27,21 +27,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
+                // No sessions, relies on JWT tokens for stateless authentication
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.POST, "/v1/users")
                         .permitAll()
                         .requestMatchers(
                                 "/v1/auth/**",
-                                "/actuator/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/h2-console/**")
+                                "/actuator/health",
+                                "/actuator/info")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(authenticationEntryPoint()))
-                .headers(h -> h.frameOptions(f -> f.sameOrigin()))
+                .headers(h -> h.frameOptions(f -> f.deny()))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -11,13 +11,14 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, String> {
-    Optional<RefreshToken> findByToken(String token);
 
-    @Modifying
+    Optional<RefreshToken> findByTokenHash(String tokenHash);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.user.id = :userId AND rt.revoked = false")
     int revokeAllByUserId(@Param("userId") String userId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM RefreshToken rt WHERE rt.expiresAt < :now OR rt.revoked = true")
     int deleteExpiredOrRevoked(@Param("now") LocalDateTime now);
 }
