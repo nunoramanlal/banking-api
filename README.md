@@ -45,7 +45,7 @@ The API will be available at `http://localhost:8080`.
 
 - **Swagger UI**: http://localhost:8080/swagger-ui.html
 - **OpenAPI JSON**: http://localhost:8080/v3/api-docs
-- **Health check**: http://localhost:8080/actuator/health
+- **Health check**: http://localhost:8080/actuator/health (requires a authenticated user)
 
 ### Running tests
 
@@ -232,4 +232,4 @@ The project uses **Palantir Java Format** enforced via Spotless. Formatting runs
 
 ## CI/CD
 
-GitHub Actions runs `./mvnw verify` on every push to `main` and every pull request. The workflow starts PostgreSQL via `dockerStart.sh`, runs the full test suite, and uploads the JaCoCo coverage report as a downloadable artifact. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+GitHub Actions runs `./mvnw verify` on every push to `main`. The workflow starts PostgreSQL via `dockerStart.sh`, runs the full test suite, and uploads the JaCoCo coverage report as a downloadable artifact. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
