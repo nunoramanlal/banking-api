@@ -158,7 +158,7 @@ Get new { accessToken, refreshToken } (refresh token rotated)
 - **Stateless access tokens** — no session storage; signature verification per request.
 - **Refresh tokens hashed** — refresh tokens are SHA-256 hashed before storage. The raw token is returned to the client at issue time only and never persisted.
 - **Refresh token rotation** — each successful refresh revokes the used token and issues a new one. If a *revoked* token is presented again, all sessions for that user are revoked, requiring re-authentication.
-- **Single-session login** — on login, any existing refresh tokens for the user are revoked. Trade-off: simpler model but no multi-device support.
+- **Single-session login** — on login, any existing refresh tokens for the user are revoked.
 - **Scheduled cleanup** — expired and revoked refresh tokens are purged hourly by a scheduled task.
 
 ## Validation & error handling
