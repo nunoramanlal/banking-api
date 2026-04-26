@@ -1,16 +1,16 @@
 # Eagle Bank API
 
-A REST API for Eagle Bank implementing user, account and transaction management and JWT-based authentication, built with Spring Boot 4 and Java 21.
+A REST API for Eagle Bank implementing user, account, and transaction management with JWT-based authentication. Built with Spring Boot 4 and Java 21.
 
 ## Overview
 
-This service exposes endpoints for CRUD operations, with stateless JWT authentication and refresh token rotation. The API contract is defined in [`src/main/resources/openapi.yaml`](src/main/resources/openapi.yaml).
+Stateless REST API with JWT authentication, refresh token rotation, and PostgreSQL persistence. The API contract is defined in [`src/main/resources/openapi.yaml`](src/main/resources/openapi.yaml).
 
 ## Tech stack
 
 - **Java 21** with **Spring Boot 4.0.5**
 - **Spring Security** for JWT authentication
-- **Spring Data JPA** with **PostgreSQL**
+- **Spring Data JPA** with **PostgreSQL 17**
 - **Flyway** for database migrations
 - **jjwt** for JWT generation and parsing
 - **Lombok** for boilerplate reduction
@@ -18,7 +18,7 @@ This service exposes endpoints for CRUD operations, with stateless JWT authentic
 - **JaCoCo** for test coverage reporting
 - **Springdoc OpenAPI** for API documentation
 - **Spotless** with **Palantir Java Format** for code formatting
-- **Docker**
+- **Docker** 
 
 ## Prerequisites
 
@@ -43,7 +43,13 @@ This service exposes endpoints for CRUD operations, with stateless JWT authentic
 
 The API will be available at `http://localhost:8080`.
 
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **OpenAPI JSON**: http://localhost:8080/v3/api-docs
+- **Health check**: http://localhost:8080/actuator/health
+
 ### Running tests
+
+Integration tests run against a real PostgreSQL container, so Docker must be running:
 
 ```bash
 # Start PostgreSQL
@@ -56,16 +62,17 @@ The API will be available at `http://localhost:8080`.
 ./src/test/resources/docker/dockerShutdown.sh
 ```
 
+To run only unit tests (no Docker required):
+
+```bash
+./mvnw test
+```
+
 ## Configuration
 
-### Database
+### Database migrations
 
-The application uses PostgreSQL with Flyway migrations. On startup, Flyway automatically applies all pending migrations from `src/main/resources/db/migration/`:
-
-- `V1__create_users_table.sql` — creates the `users` table with address fields and audit columns
-- `V2__create_refresh_tokens_table.sql` — creates the `refresh_tokens` table with foreign key to users
-- `V3__create_account_table.sql` — creates the `bank_accounts` table with sequence-generated account numbers
-
+Flyway runs automatically on startup, applying any pending migrations from `src/main/resources/db/migration/`:
 ## Example usage
 
 ```bash
@@ -111,24 +118,24 @@ Service     (domain concerns)      Command objects  →  Domain entities
 Persistence (DB concerns)          Entities
 ```
 
-Each layer has its own data shape, and mappers translate between them. This keeps the domain layer reusable and means API contract changes don't affect business logic.
+Each layer has its own data shape, and mappers translate between them. This keeps the domain layer independent of the API contract.
 
 ### Package structure
 
 ```
 com.eaglebank.banking_api
-├── config/         # Spring configuration (security, CORS, auditing)
+├── config/         # Spring configuration (security, auditing)
 ├── controller/     # REST controllers
 ├── dto/            # Request/response DTOs
 ├── entity/         # JPA entities
 ├── exception/      # Custom exceptions and global handler
 ├── mapper/         # Object mappers between layers
 ├── repository/     # Spring Data repositories
-├── scheduler/      # Scheduled tasks
-├── security/       # JWT service and authentication filter
+├── scheduler/      # Scheduled tasks (refresh token cleanup)
+├── security/       # JWT service, auth filter, token hasher
 └── service/        # Business logic
-    └── command/    # Service-layer command objects
-    └── result/     # Service-layer result objects
+    ├── command/    # Service input objects
+    └── result/     # Service output objects
 ```
 
 ## Authentication
@@ -148,28 +155,28 @@ Get new { accessToken, refreshToken } (refresh token rotated)
 **Design choices:**
 
 - **Email-only login** — the OpenAPI spec does not specify credentials for authentication. Login validates that a user exists with the given email.
-- **Single-session** — on login, any existing refresh tokens for the user are revoked.
-- **Refresh token rotation** — each successful refresh revokes the used token and issues a new one. Aiming to limit the window of exploitation if a token is stolen.
-- **Scheduled cleanup** — expired/revoked refresh tokens are purged hourly by a scheduled task.
+- **Stateless access tokens** — no session storage; signature verification per request.
+- **Refresh tokens hashed** — refresh tokens are SHA-256 hashed before storage. The raw token is returned to the client at issue time only and never persisted.
+- **Refresh token rotation** — each successful refresh revokes the used token and issues a new one. If a *revoked* token is presented again, all sessions for that user are revoked, requiring re-authentication.
+- **Single-session login** — on login, any existing refresh tokens for the user are revoked. Trade-off: simpler model but no multi-device support.
+- **Scheduled cleanup** — expired and revoked refresh tokens are purged hourly by a scheduled task.
 
-## Security
-
-- **Method-level authorisation** via `@PreAuthorize`
-- **Bearer token authentication entry point** — returns 401 (not Spring's default 403) for missing/invalid tokens
-
-## Validation
+## Validation & error handling
 
 - **Bean Validation** on DTOs for request body validation (`@NotBlank`, `@Email`, `@Pattern`)
 - **Path parameter validation** via `@Validated` on controllers
+- **DB-level constraints** — check constraints on balance ranges, account types, currencies, and transaction amounts; unique constraint on email
+- **Centralised exception handling** via `@RestControllerAdvice` mapping exception types to HTTP status codes
 
 ## Persistence
 
 - **UUID-prefixed IDs** — users get `usr-<uuid>` format matching the spec
 - **Sequence-generated account numbers** — bank accounts use a Postgres sequence to produce unique 8-digit numbers in the format `01XXXXXX`
-- **Optimistic locking** — `@Version` on entities prevents lost updates under concurrent modification
+- **`BigDecimal` for monetary values** (`DECIMAL(10,2)`)
+- **Optimistic locking** — `@Version` on `User` and `Account` 
+- **Pessimistic locking on transactions** — `findByAccountNumberForUpdate` acquires a `SELECT ... FOR UPDATE` row lock, preventing race conditions on balance updates.
 - **Auditing** — `@CreatedBy` / `@LastModifiedBy` automatically populated via `AuditorAware` and the authenticated principal
-- **Cascade deletes** — deleting a user cascades to their refresh tokens
-- **Unique email constraint** — enforced at the DB level
+- **Cascade deletes** — deleting a user cascades to their refresh tokens and accounts
 
 ## Observability
 

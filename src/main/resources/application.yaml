@@ -6,10 +6,16 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/bankingdb}
     username: ${SPRING_DATASOURCE_USERNAME:banking}
     password: ${SPRING_DATASOURCE_PASSWORD:banking}
+    hikari:
+      connection-timeout: 5000
+      validation-timeout: 3000
+      max-lifetime: 1800000
+      idle-timeout: 600000
+      maximum-pool-size: 20
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     show-sql: false
   flyway:
     enabled: true

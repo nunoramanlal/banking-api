@@ -3,6 +3,7 @@ package com.eaglebank.banking_api.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -22,7 +23,7 @@ public class JwtService {
     public JwtService(
             @Value("${security.jwt.secret}") String secret,
             @Value("${security.jwt.access-token-expiry}") Duration accessTokenExpiry) {
-        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes());
+        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenExpiry = accessTokenExpiry;
     }
 

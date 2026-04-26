@@ -63,7 +63,7 @@ public class IntegrationUtils {
     protected RefreshTokenRepository refreshTokenRepository;
 
     protected final ObjectMapper objectMapper = new ObjectMapper();
-    
+
     @AfterEach
     void cleanUp() {
         transactionRepository.deleteAll();

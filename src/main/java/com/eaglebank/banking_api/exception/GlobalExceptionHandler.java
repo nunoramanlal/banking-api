@@ -85,9 +85,9 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(ex.getMessage());
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
+    @ExceptionHandler({AccessDeniedException.class, ForbiddenException.class})
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    public ErrorResponse handleAccessDenied(AccessDeniedException ex) {
+    public ErrorResponse handleAccessDenied(Exception ex) {
         log.debug("Access denied: {}", ex.getMessage());
         return new ErrorResponse("You are not allowed to access this resource");
     }
@@ -96,13 +96,6 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleConflict(ConflictException ex) {
         log.warn("Conflict: {}", ex.getMessage());
-        return new ErrorResponse(ex.getMessage());
-    }
-
-    @ExceptionHandler(ForbiddenException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
-    public ErrorResponse handleForbidden(ForbiddenException ex) {
-        log.warn("Forbidden: {}", ex.getMessage());
         return new ErrorResponse(ex.getMessage());
     }
 
