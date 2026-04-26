@@ -1,0 +1,17 @@
+# This file is intentionally a stub - there is no AWS account, ECR repository, or EKS cluster to target.
+
+# What this workflow WOULD do in a real production setting:
+#
+#   Trigger:
+#     - Runs on every push to `main` (i.e. after a PR is merged).
+#
+#   Steps:
+#     1. Check out the repo and set up Java 21 (Temurin).
+#     2. Build the Spring Boot JAR with `./mvnw -DskipTests package`.
+#        Tests are skipped here because they already ran in CI on the same commit
+#     3. Authenticate to AWS
+#     4. Log in to Amazon ECR and build a Docker image, tagged with the
+#        commit SHA (`${{ github.sha }}`). Push to ECR.
+#     5. Update kubeconfig for the target EKS cluster (`aws eks update-kubeconfig`).
+#     6. Roll the Kubernetes Deployment to the new image
+# =============================================================================
